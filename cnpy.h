@@ -22,45 +22,45 @@
 namespace cnpy {
 
     struct NpyArray {
-        NpyArray(const std::vector<size_t>& _shape, size_t _word_size, bool _fortran_order) :
-            shape(_shape), word_size(_word_size), fortran_order(_fortran_order)
-        {
-            num_vals = 1;
-            for(size_t i = 0;i < shape.size();i++) num_vals *= shape[i];
-            data_holder = std::shared_ptr<std::vector<char>>(
+      NpyArray(const std::vector<size_t>& _shape, size_t _word_size, bool _fortran_order) :
+              shape(_shape), word_size(_word_size), fortran_order(_fortran_order)
+      {
+        num_vals = 1;
+        for(size_t i = 0;i < shape.size();i++) num_vals *= shape[i];
+        data_holder = std::shared_ptr<std::vector<char>>(
                 new std::vector<char>(num_vals * word_size));
-        }
+      }
 
-        NpyArray() : shape(0), word_size(0), fortran_order(0), num_vals(0) { }
+      NpyArray() : shape(0), word_size(0), fortran_order(0), num_vals(0) { }
 
-        template<typename T>
-        T* data() {
-            return reinterpret_cast<T*>(&(*data_holder)[0]);
-        }
+      template<typename T>
+      T* data() {
+        return reinterpret_cast<T*>(&(*data_holder)[0]);
+      }
 
-        template<typename T>
-        const T* data() const {
-            return reinterpret_cast<T*>(&(*data_holder)[0]);
-        }
+      template<typename T>
+      const T* data() const {
+        return reinterpret_cast<T*>(&(*data_holder)[0]);
+      }
 
-        template<typename T>
-        std::vector<T> as_vec() const {
-            const T* p = data<T>();
-            return std::vector<T>(p, p+num_vals);
-        }
+      template<typename T>
+      std::vector<T> as_vec() const {
+        const T* p = data<T>();
+        return std::vector<T>(p, p+num_vals);
+      }
 
-        size_t num_bytes() const {
-            return data_holder->size();
-        }
+      size_t num_bytes() const {
+        return data_holder->size();
+      }
 
-        std::shared_ptr<std::vector<char>> data_holder;
-        std::vector<size_t> shape;
-        size_t word_size;
-        bool fortran_order;
-        size_t num_vals;
+      std::shared_ptr<std::vector<char>> data_holder;
+      std::vector<size_t> shape;
+      size_t word_size;
+      bool fortran_order;
+      size_t num_vals;
     };
-   
-    using npz_t = std::map<std::string, NpyArray>; 
+
+    using npz_t = std::map<std::string, NpyArray>;
 
     char BigEndianTest();
     char map_type(const std::type_info& t);
@@ -73,12 +73,12 @@ namespace cnpy {
     NpyArray npy_load(std::string fname);
 
     template<typename T> std::vector<char>& operator+=(std::vector<char>& lhs, const T rhs) {
-        //write in little endian
-        for(size_t byte = 0; byte < sizeof(T); byte++) {
-            char val = *((char*)&rhs+byte); 
-            lhs.push_back(val);
-        }
-        return lhs;
+      //write in little endian
+      for(size_t byte = 0; byte < sizeof(T); byte++) {
+        const char val = *((const char*)&rhs+byte);
+        lhs.push_back(val);
+      }
+      return lhs;
     }
 
     template<> std::vector<char>& operator+=(std::vector<char>& lhs, const std::string rhs);
@@ -99,25 +99,25 @@ namespace cnpy {
             assert(!fortran_order);
 
             if(word_size != sizeof(T)) {
-                std::cout<<"libnpy error: "<<fname<<" has word size "<<word_size<<" but npy_save appending data sized "<<sizeof(T)<<"\n";
-                assert( word_size == sizeof(T) );
+              std::cout<<"libnpy error: "<<fname<<" has word size "<<word_size<<" but npy_save appending data sized "<<sizeof(T)<<"\n";
+              assert( word_size == sizeof(T) );
             }
             if(true_data_shape.size() != shape.size()) {
-                std::cout<<"libnpy error: npy_save attempting to append misdimensioned data to "<<fname<<"\n";
-                assert(true_data_shape.size() != shape.size());
+              std::cout<<"libnpy error: npy_save attempting to append misdimensioned data to "<<fname<<"\n";
+              assert(true_data_shape.size() != shape.size());
             }
 
             for(size_t i = 1; i < shape.size(); i++) {
-                if(shape[i] != true_data_shape[i]) {
-                    std::cout<<"libnpy error: npy_save attempting to append misshaped data to "<<fname<<"\n";
-                    assert(shape[i] == true_data_shape[i]);
-                }
+              if(shape[i] != true_data_shape[i]) {
+                std::cout<<"libnpy error: npy_save attempting to append misshaped data to "<<fname<<"\n";
+                assert(shape[i] == true_data_shape[i]);
+              }
             }
             true_data_shape[0] += shape[0];
         }
         else {
-            fp = fopen(fname.c_str(),"wb");
-            true_data_shape = shape;
+          fp = fopen(fname.c_str(),"wb");
+          true_data_shape = shape;
         }
 
         std::vector<char> header = create_npy_header<T>(true_data_shape);
@@ -144,32 +144,32 @@ namespace cnpy {
         if(mode == "a") fp = fopen(zipname.c_str(),"r+b");
 
         if(fp) {
-            //zip file exists. we need to add a new npy file to it.
-            //first read the footer. this gives us the offset and size of the global header
-            //then read and store the global header.
-            //below, we will write the the new data at the start of the global header then append the global header and footer below it
-            size_t global_header_size;
-            parse_zip_footer(fp,nrecs,global_header_size,global_header_offset);
-            fseek(fp,global_header_offset,SEEK_SET);
-            global_header.resize(global_header_size);
-            size_t res = fread(&global_header[0],sizeof(char),global_header_size,fp);
-            if(res != global_header_size){
-                throw std::runtime_error("npz_save: header read error while adding to existing zip");
-            }
-            fseek(fp,global_header_offset,SEEK_SET);
+          //zip file exists. we need to add a new npy file to it.
+          //first read the footer. this gives us the offset and size of the global header
+          //then read and store the global header.
+          //below, we will write the new data at the start of the global header then append the global header and footer below it
+          size_t global_header_size;
+          parse_zip_footer(fp,nrecs,global_header_size,global_header_offset);
+          fseek(fp,global_header_offset,SEEK_SET);
+          global_header.resize(global_header_size);
+          size_t res = fread(&global_header[0],sizeof(char),global_header_size,fp);
+          if(res != global_header_size){
+            throw std::runtime_error("npz_save: header read error while adding to existing zip");
+          }
+          fseek(fp,global_header_offset,SEEK_SET);
         }
         else {
-            fp = fopen(zipname.c_str(),"wb");
+          fp = fopen(zipname.c_str(),"wb");
         }
 
         std::vector<char> npy_header = create_npy_header<T>(shape);
 
         size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
-        size_t nbytes = nels*sizeof(T) + npy_header.size();
+        size_t nbytes = nels * sizeof(T) + npy_header.size();
 
         //get the CRC of the data to be added
-        uint32_t crc = crc32(0L,(uint8_t*)&npy_header[0],npy_header.size());
-        crc = crc32(crc,(uint8_t*)data,nels*sizeof(T));
+        unsigned long crc = crc32(0L,(uint8_t*)&npy_header[0], (unsigned int)npy_header.size());
+        crc = crc32(crc, (const uint8_t*)data, (unsigned int)(nels * sizeof(T)));
 
         //build the local header
         std::vector<char> local_header;
@@ -232,7 +232,7 @@ namespace cnpy {
         npz_save(zipname, fname, &data[0], shape, mode);
     }
 
-    template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape) {  
+    template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape) {
 
         std::vector<char> dict;
         dict += "{'descr': '";
@@ -241,14 +241,16 @@ namespace cnpy {
         dict += std::to_string(sizeof(T));
         dict += "', 'fortran_order': False, 'shape': (";
         dict += std::to_string(shape[0]);
+
         for(size_t i = 1;i < shape.size();i++) {
             dict += ", ";
             dict += std::to_string(shape[i]);
         }
+
         if(shape.size() == 1) dict += ",";
         dict += "), }";
         //pad with spaces so that preamble+dict is modulo 16 bytes. preamble is 10 bytes. dict needs to end with \n
-        int remainder = 16 - (10 + dict.size()) % 16;
+        int remainder = (int) (16 - (10 + dict.size()) % 16);
         dict.insert(dict.end(),remainder,' ');
         dict.back() = '\n';
 
